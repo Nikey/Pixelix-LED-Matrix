@@ -67,7 +67,7 @@ static SensorLdr        gLdr(CONFIG_SENSOR_LDR, CONFIG_SENSOR_LDR_SERIES_RESISTA
 static SensorSht3X      gSht3x(SHTSensor::AUTO_DETECT);
 
 /** The DHT11 sensor. */
-static SensorDhtX       gDht11(SensorDhtX::MODEL_DHT11);
+static SensorDhtX       gDht21(SensorDhtX::MODEL_DHT21);
 
 /** Battery sensor. */
 static SensorBattery    gBattery;
@@ -78,7 +78,7 @@ static ISensor*         gSensors[] =
     /* Sensor id, Sensor driver */
     /* 0 */ &gLdr,
     /* 1 */ &gSht3x,
-    /* 2 */ &gDht11,
+    /* 2 */ &gDht21,
     /* 3 */ &gBattery
 };
 
