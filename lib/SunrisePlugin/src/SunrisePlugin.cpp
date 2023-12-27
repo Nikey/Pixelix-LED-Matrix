@@ -70,6 +70,11 @@ const char* SunrisePlugin::TOPIC_CONFIG         = "/location";
 /* Initialize time format. */
 const char* SunrisePlugin::TIME_FORMAT_DEFAULT  = "%I:%M %p";
 
+/* Initialize sunset and sunrise times API base URI.
+ * Use http:// instead of https:// for less required heap memory for SSL connection.
+ */
+const char* SunrisePlugin::BASE_URI             = "http://api.sunrise-sunset.org";
+
 /******************************************************************************
  * Public Methods
  *****************************************************************************/
@@ -415,7 +420,7 @@ bool SunrisePlugin::startHttpRequest()
     if ((false == m_latitude.isEmpty()) &&
         (false == m_longitude.isEmpty()))
     {
-        String url = String("http://api.sunrise-sunset.org/json?lat=") + m_latitude + "&lng=" + m_longitude + "&formatted=0";
+        String url = String(BASE_URI) + "/json?lat=" + m_latitude + "&lng=" + m_longitude + "&formatted=0";
 
         if (true == m_client.begin(url))
         {
@@ -461,7 +466,6 @@ void SunrisePlugin::handleAsyncWebResponse(const HttpResponse& rsp)
             const char*                     payload     = static_cast<const char*>(vPayload);
             const size_t                    FILTER_SIZE = 128U;
             StaticJsonDocument<FILTER_SIZE> filter;
-            DeserializationError            error;
 
             /* Example:
             * {
@@ -489,24 +493,31 @@ void SunrisePlugin::handleAsyncWebResponse(const HttpResponse& rsp)
             {
                 LOG_ERROR("Less memory for filter available.");
             }
-
-            error = deserializeJson(*jsonDoc, payload, payloadSize, DeserializationOption::Filter(filter));
-
-            if (DeserializationError::Ok != error.code())
+            else if ((nullptr == payload) ||
+                     (0U == payloadSize))
             {
-                LOG_ERROR("Invalid JSON message received: %s", error.c_str());
+                LOG_ERROR("No payload.");
             }
             else
             {
-                Msg msg;
+                DeserializationError error = deserializeJson(*jsonDoc, payload, payloadSize, DeserializationOption::Filter(filter));
 
-                msg.type    = MSG_TYPE_RSP;
-                msg.rsp     = jsonDoc;
-
-                if (false == this->m_taskProxy.send(msg))
+                if (DeserializationError::Ok != error.code())
                 {
-                    delete jsonDoc;
-                    jsonDoc = nullptr;
+                    LOG_ERROR("Invalid JSON message received: %s", error.c_str());
+                }
+                else
+                {
+                    Msg msg;
+
+                    msg.type    = MSG_TYPE_RSP;
+                    msg.rsp     = jsonDoc;
+
+                    if (false == this->m_taskProxy.send(msg))
+                    {
+                        delete jsonDoc;
+                        jsonDoc = nullptr;
+                    }
                 }
             }
         }

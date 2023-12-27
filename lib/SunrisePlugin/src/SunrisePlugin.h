@@ -135,7 +135,7 @@ public:
      */
     static IPluginMaintenance* create(const String& name, uint16_t uid)
     {
-        return new SunrisePlugin(name, uid);
+        return new(std::nothrow)SunrisePlugin(name, uid);
     }
 
     /**
@@ -288,6 +288,11 @@ private:
      * Plugin topic, used to read/write the configuration.
      */
     static const char*      TOPIC_CONFIG;
+
+    /**
+     * Sunset and sunrise times API base URI.
+     */
+    static const char*      BASE_URI;
 
     /**
      * Period in ms for requesting sunset/sunrise from server.

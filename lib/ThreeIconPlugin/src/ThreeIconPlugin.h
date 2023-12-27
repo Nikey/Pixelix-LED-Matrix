@@ -79,7 +79,7 @@ public:
         m_spriteSheetPaths(),
         m_isUploadError(false),
         m_mutex(),
-        m_hasTopicChanged(false)
+        m_hasTopicChanged()
     {
         (void)m_mutex.create();
     }
@@ -102,7 +102,7 @@ public:
      */
     static IPluginMaintenance* create(const String& name, uint16_t uid)
     {
-        return new ThreeIconPlugin(name, uid);
+        return new(std::nothrow)ThreeIconPlugin(name, uid);
     }
 
     /**
@@ -343,7 +343,7 @@ private:
     String                  m_spriteSheetPaths[MAX_ICONS];  /**< Full path to spritesheets. */
     bool                    m_isUploadError;                /**< Flag to signal a upload error. */
     mutable MutexRecursive  m_mutex;                        /**< Mutex to protect against concurrent access. */
-    bool                    m_hasTopicChanged;              /**< Has the topic content changed? */
+    bool                    m_hasTopicChanged[MAX_ICONS];  /**< Has the topic content changed? */
 
     /**
      * Get image filename with path.

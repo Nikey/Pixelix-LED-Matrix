@@ -470,9 +470,9 @@
                         isForward = field.value;
                     } else if (field.name === "repeat") {
                         isRepeat = field.value;
-                    } else if (field.name === "icon") {
+                    } else if (field.name === "iconFullPath") {
                         iconFullPath = field.value;
-                    } else if (field.name === "spriteSheet") {
+                    } else if (field.name === "spriteSheetFullPath") {
                         spriteSheetFullPath = field.value;
                     } else {
                         /* Skip. */
@@ -505,7 +505,7 @@
             }
 
             function updateForms() {
-                var selectText = document.getElementById("pluginUidText");
+                var selectText = document.getElementById("pluginUidAnimation");
 
                 if (0 <= selectText.selectedIndex) {
 

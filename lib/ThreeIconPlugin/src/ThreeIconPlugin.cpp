@@ -190,8 +190,7 @@ bool ThreeIconPlugin::setTopic(const String& topic, const JsonObjectConst& value
         bool        status              = Util::strToUInt8(iconIdStr, iconId);
 
         if ((true == status) &&
-            (MAX_ICONS > iconId) &&
-            (false == m_spriteSheetPaths[iconId].isEmpty()))
+            (MAX_ICONS > iconId))
         {
             JsonVariantConst    jsonIsForward           = value["forward"];
             JsonVariantConst    jsonIsRepeat            = value["repeat"];
@@ -244,7 +243,10 @@ bool ThreeIconPlugin::setTopic(const String& topic, const JsonObjectConst& value
                 }
                 else
                 {
-                    loadBitmap(iconId, iconFullPath);
+                    /* Don't use the return value, because there may be no bitmap
+                     * available yet.
+                     */
+                    (void)loadBitmap(iconId, iconFullPath);
                 }
 
                 isSuccessful = true;
@@ -260,7 +262,10 @@ bool ThreeIconPlugin::setTopic(const String& topic, const JsonObjectConst& value
                 }
                 else
                 {
-                    loadSpriteSheet(iconId, spriteSheetFullPath);
+                    /* Don't use the return value, because there may be no bitmap
+                     * or sprite sheet available yet.
+                     */
+                    (void)loadSpriteSheet(iconId, spriteSheetFullPath);
                 }
 
                 isSuccessful = true;
@@ -287,13 +292,12 @@ bool ThreeIconPlugin::hasTopicChanged(const String& topic)
         bool        status              = Util::strToUInt8(iconIdStr, iconId);
 
         if ((true == status) &&
-            (MAX_ICONS > iconId) &&
-            (false == m_spriteSheetPaths[iconId].isEmpty()))
+            (MAX_ICONS > iconId))
         {
             MutexGuard<MutexRecursive> guard(m_mutex);
 
-            hasTopicChanged     = m_hasTopicChanged;
-            m_hasTopicChanged   = false;
+            hasTopicChanged             = m_hasTopicChanged[iconId];
+            m_hasTopicChanged[iconId]   = false;
         }
     }
 
@@ -352,7 +356,9 @@ void ThreeIconPlugin::start(uint16_t width, uint16_t height)
 
     for(iconId = 0U; iconId < MAX_ICONS; ++iconId)
     { 
-        int16_t x = (ICON_WIDTH + DISTANCE) * iconId + DISTANCE;
+        int16_t x                   = (ICON_WIDTH + DISTANCE) * iconId + DISTANCE;
+        String bitmapFullPath       = getFileName(iconId, FILE_EXT_BITMAP);
+        String spriteSheetFullPath  = getFileName(iconId, FILE_EXT_SPRITE_SHEET);
 
         (void)m_threeIconCanvas.addWidget(m_bitmapWidgets[iconId]);
         m_bitmapWidgets[iconId].move(x, 0);
@@ -364,18 +370,20 @@ void ThreeIconPlugin::start(uint16_t width, uint16_t height)
         m_iconPaths[iconId].clear();
         m_spriteSheetPaths[iconId].clear();
 
-        if (false == m_bitmapWidgets[iconId].loadSpriteSheet(FILESYSTEM, getFileName(iconId, FILE_EXT_SPRITE_SHEET), getFileName(iconId, FILE_EXT_BITMAP)))
+        if (false == m_bitmapWidgets[iconId].loadSpriteSheet(FILESYSTEM, spriteSheetFullPath, bitmapFullPath))
         {
-            if (true == m_bitmapWidgets[iconId].load(FILESYSTEM, getFileName(iconId, FILE_EXT_BITMAP)))
+            if (true == m_bitmapWidgets[iconId].load(FILESYSTEM, bitmapFullPath))
             {
-                m_iconPaths[iconId] = getFileName(iconId, FILE_EXT_BITMAP);
+                m_iconPaths[iconId] = bitmapFullPath;
             }
         }
         else
         {
-            m_iconPaths[iconId]         = getFileName(iconId, FILE_EXT_BITMAP);
-            m_spriteSheetPaths[iconId]  = getFileName(iconId, FILE_EXT_SPRITE_SHEET);
+            m_iconPaths[iconId]         = bitmapFullPath;
+            m_spriteSheetPaths[iconId]  = spriteSheetFullPath;
         }
+
+        m_hasTopicChanged[iconId] = true;
     }
 }
 
@@ -385,15 +393,18 @@ void ThreeIconPlugin::stop()
     MutexGuard<MutexRecursive>  guard(m_mutex);
 
     for(iconId = 0U; iconId < MAX_ICONS; ++iconId)
-    { 
-        if (false != FILESYSTEM.remove(getFileName(iconId, FILE_EXT_BITMAP)))
+    {
+        String bitmapFullPath       = getFileName(iconId, FILE_EXT_BITMAP);
+        String spriteSheetFullPath  = getFileName(iconId, FILE_EXT_SPRITE_SHEET);
+
+        if (false != FILESYSTEM.remove(bitmapFullPath))
         {
-            LOG_INFO("File %s removed", getFileName(iconId, FILE_EXT_BITMAP).c_str());
+            LOG_INFO("File %s removed", bitmapFullPath.c_str());
         }
 
-        if (false != FILESYSTEM.remove(getFileName(iconId, FILE_EXT_SPRITE_SHEET)))
+        if (false != FILESYSTEM.remove(spriteSheetFullPath))
         {
-            LOG_INFO("File %s removed", getFileName(iconId, FILE_EXT_SPRITE_SHEET).c_str());
+            LOG_INFO("File %s removed", spriteSheetFullPath.c_str());
         }
     }
 }
@@ -416,8 +427,8 @@ bool ThreeIconPlugin::loadBitmap(uint8_t iconId, const String& filename)
 
         if (m_iconPaths[iconId] != filename)
         {
-            m_iconPaths[iconId] = filename;
-            m_hasTopicChanged   = true;
+            m_iconPaths[iconId]         = filename;
+            m_hasTopicChanged[iconId]   = true;
         }
 
         if (false == m_spriteSheetPaths->isEmpty())
@@ -445,7 +456,7 @@ bool ThreeIconPlugin::loadSpriteSheet(uint8_t iconId, const String& filename)
         if (m_spriteSheetPaths[iconId] != filename)
         {
             m_spriteSheetPaths[iconId]  = filename;
-            m_hasTopicChanged           = true;
+            m_hasTopicChanged[iconId]   = true;
         }
 
         if (false == m_iconPaths[iconId].isEmpty())
@@ -480,7 +491,7 @@ void ThreeIconPlugin::setIsForward(uint8_t iconId, bool state)
         {
             m_bitmapWidgets[iconId].setSpriteSheetForward(state);
 
-            m_hasTopicChanged = true;
+            m_hasTopicChanged[iconId] = true;
         }
     }
 }
@@ -508,7 +519,7 @@ void ThreeIconPlugin::setIsRepeat(uint8_t iconId, bool state)
         {
             m_bitmapWidgets[iconId].setSpriteSheetRepeatInfinite(state);
 
-            m_hasTopicChanged = true;
+            m_hasTopicChanged[iconId] = true;
         }
     }
 }
@@ -524,7 +535,7 @@ void ThreeIconPlugin::clearBitmap(uint8_t iconId)
             m_iconPaths[iconId].clear();
             m_bitmapWidgets[iconId].clear(ColorDef::BLACK);
 
-            m_hasTopicChanged = true;
+            m_hasTopicChanged[iconId] = true;
         }
     }
 }
@@ -539,7 +550,7 @@ void ThreeIconPlugin::clearSpriteSheet(uint8_t iconId)
         {
             m_spriteSheetPaths[iconId].clear();
 
-            m_hasTopicChanged = true;
+            m_hasTopicChanged[iconId] = true;
         }
 
         if (false == m_iconPaths[iconId].isEmpty())
